@@ -26,6 +26,20 @@ impl VarBuilder {
         })
     }
 
+    pub fn from_gguf_stream<P: std::io::Seek + std::io::Read>(mut file: P, device: &Device) -> Result<Self> {
+        let content = candle::quantized::gguf_file::Content::read(&mut file)?;
+        let mut data = std::collections::HashMap::new();
+        for tensor_name in content.tensor_infos.keys() {
+            let tensor = content.tensor(&mut file, tensor_name, device)?;
+            data.insert(tensor_name.to_string(), Arc::new(tensor));
+        }
+        Ok(Self {
+            data: Arc::new(data),
+            path: Vec::new(),
+            device: device.clone(),
+        })
+    }
+
     pub fn from_gguf_buffer(buffer: &[u8], device: &Device) -> Result<Self> {
         let mut cursor = std::io::Cursor::new(buffer);
         let content = candle::quantized::gguf_file::Content::read(&mut cursor)?;
